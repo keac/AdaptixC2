@@ -132,7 +132,7 @@ jobs:
           version: '6.8.1'
           host: 'windows'
           target: 'desktop'
-          arch: 'win64_mingw'
+          arch: 'win64_mingw_64'
           modules: 'qtwebsockets qt5compat'
           tools: 'tools_mingw1310_64'
           cache: true
@@ -148,7 +148,14 @@ jobs:
           cmake --build . --parallel
           cd ..
           mkdir -p dist
-          cp AdaptixClient/AdaptixClient.exe dist/ || cp AdaptixClient/Release/AdaptixClient.exe dist/
+          if [ -f AdaptixClient/AdaptixClient.exe ]; then
+            cp AdaptixClient/AdaptixClient.exe dist/
+          elif [ -f AdaptixClient/Release/AdaptixClient.exe ]; then
+            cp AdaptixClient/Release/AdaptixClient.exe dist/
+          else
+            echo "Error: AdaptixClient.exe not found in expected locations"
+            exit 1
+          fi
 
       - name: Deploy Qt dependencies
         shell: bash
