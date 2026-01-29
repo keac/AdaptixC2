@@ -129,11 +129,10 @@ jobs:
       - name: Install Qt6
         uses: jurplel/install-qt-action@v4
         with:
-          version: '6.8.1'
+          version: '6.7.3'
           host: 'windows'
           target: 'desktop'
-          arch: 'win64_mingw_64'
-          tools: 'tools_mingw1310_64'
+          arch: 'win64_mingw'
           cache: true
 
       - name: Build client
@@ -141,7 +140,6 @@ jobs:
         run: |
           # Add Qt and MinGW to PATH
           export PATH="${Qt6_DIR}/bin:$PATH"
-          export PATH="$(dirname ${Qt6_DIR})/Tools/mingw1310_64/bin:$PATH"
           cd AdaptixClient
           cmake . -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
           cmake --build . --parallel
