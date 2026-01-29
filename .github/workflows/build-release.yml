@@ -1,0 +1,177 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-server:
+    name: Build Server (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.4'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc g++ make mingw-w64
+
+      - name: Build server
+        run: make server
+
+      - name: Build extenders
+        run: make extenders
+
+      - name: Package server artifacts
+        run: |
+          cd dist
+          tar -czf ../adaptix-server-linux-amd64.tar.gz *
+          cd ..
+
+      - name: Upload server artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: adaptix-server-linux-amd64
+          path: adaptix-server-linux-amd64.tar.gz
+
+  build-client-linux:
+    name: Build Client (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Qt6 and dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            gcc g++ make cmake \
+            libssl-dev \
+            qt6-base-dev \
+            qt6-base-private-dev \
+            libxkbcommon-dev \
+            qt6-websockets-dev \
+            qt6-declarative-dev
+
+      - name: Build client
+        run: make client
+
+      - name: Package client
+        run: |
+          cd dist
+          tar -czf ../adaptix-client-linux-amd64.tar.gz AdaptixClient
+          cd ..
+
+      - name: Upload client artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: adaptix-client-linux-amd64
+          path: adaptix-client-linux-amd64.tar.gz
+
+  build-client-macos:
+    name: Build Client (macOS)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew install make cmake openssl qt@6
+
+      - name: Build client
+        run: |
+          export PATH="/opt/homebrew/opt/qt@6/bin:$PATH"
+          export LDFLAGS="-L/opt/homebrew/opt/qt@6/lib -L/opt/homebrew/opt/openssl/lib"
+          export CPPFLAGS="-I/opt/homebrew/opt/qt@6/include -I/opt/homebrew/opt/openssl/include"
+          export PKG_CONFIG_PATH="/opt/homebrew/opt/qt@6/lib/pkgconfig:/opt/homebrew/opt/openssl/lib/pkgconfig"
+          make client
+
+      - name: Package client
+        run: |
+          cd dist
+          tar -czf ../adaptix-client-macos-arm64.tar.gz AdaptixClient
+          cd ..
+
+      - name: Upload client artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: adaptix-client-macos-arm64
+          path: adaptix-client-macos-arm64.tar.gz
+
+  build-client-windows:
+    name: Build Client (Windows)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Qt6
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.1'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_mingw'
+          modules: 'qtwebsockets qt5compat'
+          tools: 'tools_mingw90'
+
+      - name: Build client
+        shell: bash
+        run: |
+          export PATH="${Qt6_DIR}/bin:${Qt6_DIR}/../../../Tools/mingw1310_64/bin:$PATH"
+          cd AdaptixClient
+          cmake . -G "MinGW Makefiles"
+          mingw32-make
+          cd ..
+          mkdir -p dist
+          cp AdaptixClient/AdaptixClient.exe dist/
+
+      - name: Package client
+        shell: bash
+        run: |
+          cd dist
+          7z a ../adaptix-client-windows-amd64.zip AdaptixClient.exe
+          cd ..
+
+      - name: Upload client artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: adaptix-client-windows-amd64
+          path: adaptix-client-windows-amd64.zip
+
+  release:
+    name: Create Release
+    needs: [build-server, build-client-linux, build-client-macos, build-client-windows]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/adaptix-server-linux-amd64/adaptix-server-linux-amd64.tar.gz
+            artifacts/adaptix-client-linux-amd64/adaptix-client-linux-amd64.tar.gz
+            artifacts/adaptix-client-macos-arm64/adaptix-client-macos-arm64.tar.gz
+            artifacts/adaptix-client-windows-amd64/adaptix-client-windows-amd64.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
