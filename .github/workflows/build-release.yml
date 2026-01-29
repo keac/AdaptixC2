@@ -90,6 +90,7 @@ jobs:
       - name: Build client
         run: |
           export PATH="/opt/homebrew/opt/qt@6/bin:$PATH"
+          export CMAKE_PREFIX_PATH="/opt/homebrew/opt/qt@6:/opt/homebrew/opt/openssl"
           export LDFLAGS="-L/opt/homebrew/opt/qt@6/lib -L/opt/homebrew/opt/openssl/lib"
           export CPPFLAGS="-I/opt/homebrew/opt/qt@6/include -I/opt/homebrew/opt/openssl/include"
           export PKG_CONFIG_PATH="/opt/homebrew/opt/qt@6/lib/pkgconfig:/opt/homebrew/opt/openssl/lib/pkgconfig"
@@ -123,23 +124,33 @@ jobs:
           arch: 'win64_mingw'
           modules: 'qtwebsockets qt5compat'
           tools: 'tools_mingw90'
+          cache: true
 
       - name: Build client
         shell: bash
         run: |
-          export PATH="${Qt6_DIR}/bin:${Qt6_DIR}/../../../Tools/mingw1310_64/bin:$PATH"
+          # Add Qt and MinGW to PATH
+          export PATH="${Qt6_DIR}/bin:$PATH"
+          export PATH="$(dirname ${Qt6_DIR})/Tools/mingw1310_64/bin:$PATH"
           cd AdaptixClient
-          cmake . -G "MinGW Makefiles"
-          mingw32-make
+          cmake . -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
+          cmake --build . --parallel
           cd ..
           mkdir -p dist
-          cp AdaptixClient/AdaptixClient.exe dist/
+          cp AdaptixClient/AdaptixClient.exe dist/ || cp AdaptixClient/Release/AdaptixClient.exe dist/
+
+      - name: Deploy Qt dependencies
+        shell: bash
+        run: |
+          export PATH="${Qt6_DIR}/bin:$PATH"
+          cd dist
+          windeployqt.exe --release --no-translations AdaptixClient.exe
 
       - name: Package client
         shell: bash
         run: |
           cd dist
-          7z a ../adaptix-client-windows-amd64.zip AdaptixClient.exe
+          7z a ../adaptix-client-windows-amd64.zip *
           cd ..
 
       - name: Upload client artifact
