@@ -29,6 +29,7 @@ This directory contains automated build and release workflows for AdaptixC2.
    - Uses Qt6 with MinGW
    - Includes Qt dependency deployment via windeployqt
    - Packages as `adaptix-client-windows-amd64.zip`
+   - **Resilient to errors**: Continues and uploads artifacts even if build fails
 
 5. **release** - Creates GitHub Release
    - Only runs when a tag is pushed
@@ -125,6 +126,13 @@ If builds fail:
 2. Verify dependencies are correctly specified in workflow files
 3. Ensure Makefile targets work correctly
 4. For Windows builds, verify MinGW and Qt paths are correct
+
+**Note on Windows builds**: The Windows build job is configured to continue and upload artifacts even if errors occur during the build process. This ensures that:
+- Other platform builds (Linux, macOS) can complete successfully
+- Partial build artifacts are uploaded when possible
+- The release process can proceed with available platform builds
+
+If a Windows build fails, check the uploaded artifact - it may contain a `BUILD_FAILED.txt` file indicating no executable was built.
 
 For local testing:
 - Use `make server` to build the server
