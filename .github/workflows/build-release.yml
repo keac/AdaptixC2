@@ -157,9 +157,13 @@ jobs:
 
       - name: Deploy Qt dependencies
         continue-on-error: true
-        if: always()
+        if: success() || failure()
         shell: bash
         run: |
+          if [ -z "${Qt6_DIR}" ]; then
+            echo "Warning: Qt6_DIR not set, skipping Qt deployment"
+            exit 0
+          fi
           export PATH="${Qt6_DIR}/bin:$PATH"
           cd dist
           if [ -f AdaptixClient.exe ]; then
@@ -169,11 +173,12 @@ jobs:
           fi
 
       - name: Package client
-        if: always()
+        if: success() || failure()
         shell: bash
         run: |
+          mkdir -p dist
           cd dist
-          if [ "$(ls -A)" ]; then
+          if [ "$(ls -A 2>/dev/null)" ]; then
             7z a ../adaptix-client-windows-amd64.zip *
             echo "Packaged available artifacts"
           else
@@ -185,7 +190,8 @@ jobs:
           cd ..
 
       - name: Upload client artifact
-        if: always()
+        if: success() || failure()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: adaptix-client-windows-amd64
