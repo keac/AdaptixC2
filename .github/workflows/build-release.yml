@@ -138,7 +138,7 @@ jobs:
       - name: Build client
         shell: bash
         run: |
-          # Add Qt and MinGW to PATH
+          # Add Qt to PATH (MinGW is included by Qt installer)
           export PATH="${Qt6_DIR}/bin:$PATH"
           cd AdaptixClient
           cmake . -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
