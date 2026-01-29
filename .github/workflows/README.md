@@ -113,8 +113,8 @@ All workflows follow GitHub Actions security best practices:
 - OpenSSL (via Homebrew)
 
 ### Windows Client Build
-- Qt6 6.8.1
-- MinGW 13.1.0
+- Qt6 6.7.3
+- MinGW (included with Qt installer)
 - CMake (included with Qt installer)
 
 ## Troubleshooting
